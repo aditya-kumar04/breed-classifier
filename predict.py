@@ -46,7 +46,8 @@ def predict(image_path):
 
     with torch.no_grad():
         outputs = model(image)
-        probs = torch.softmax(outputs, dim=1)
+        temperature = 2.0  # try between 1.5–3.0
+        probs = torch.softmax(outputs / temperature, dim=1)
 
     confidence, pred = torch.max(probs, 1)
     top3_prob, top3_idx = torch.topk(probs, 3)
