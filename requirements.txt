@@ -1,6 +1,7 @@
 streamlit
 torch
 torchvision
-pillow
-numpy
+huggingface_hub
 opencv-python-headless
+Pillow
+numpy
