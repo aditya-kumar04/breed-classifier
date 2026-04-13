@@ -22,7 +22,7 @@ env/
 data/
 
 # Model files (optional - keep if deploying)
-# models/
+models/
 
 # Streamlit
 .streamlit/

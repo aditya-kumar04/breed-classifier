@@ -7,6 +7,24 @@ import torch.nn.functional as F
 from torchvision.models import resnet50
 import numpy as np
 import cv2
+import os
+from huggingface_hub import hf_hub_download
+
+# -------------------------------
+# MODEL DOWNLOAD CONFIG
+# -------------------------------
+MODEL_PATH = "best_model.pth"
+HF_REPO_ID = "aditya-kumar04/breed-identification"
+
+def get_model():
+    if not os.path.exists(MODEL_PATH):
+        with st.spinner("Downloading model from Hugging Face..."):
+            hf_hub_download(
+                repo_id=HF_REPO_ID,
+                filename=MODEL_PATH,
+                local_dir="."
+            )
+    return MODEL_PATH
 
 # -------------------------------
 # PAGE CONFIG
@@ -41,7 +59,7 @@ classes = [
 ]
 
 # -------------------------------
-# BREED INFO (UX BOOST)
+# BREED INFO
 # -------------------------------
 breed_info = {
     "Murrah": "High milk yield, black coat, Haryana",
@@ -51,13 +69,17 @@ breed_info = {
 }
 
 # -------------------------------
-# MODEL
+# LOAD MODEL (FIXED)
 # -------------------------------
 @st.cache_resource
 def load_model():
+    model_path = get_model()  # ✅ correct usage
+
     model = resnet50(weights=None)
     model.fc = nn.Linear(model.fc.in_features, 9)
-    model.load_state_dict(torch.load("models/best_model.pth", map_location=device))
+
+    model.load_state_dict(torch.load(model_path, map_location=device))
+
     model = model.to(device)
     model.eval()
     return model
@@ -65,7 +87,7 @@ def load_model():
 model = load_model()
 
 # -------------------------------
-# TRANSFORM
+# TRANSFORMS
 # -------------------------------
 transform = transforms.Compose([
     transforms.Resize((224, 224)),
@@ -112,7 +134,7 @@ def generate_gradcam(model, image_tensor, target_class):
     cam = np.maximum(cam, 0)
     cam = cv2.resize(cam, (224, 224))
     cam = cam - cam.min()
-    cam = cam / cam.max()
+    cam = cam / (cam.max() + 1e-8)
 
     fwd.remove()
     bwd.remove()
@@ -128,7 +150,7 @@ def overlay_heatmap(image, cam):
     return np.uint8(255 * overlay)
 
 # -------------------------------
-# PREDICT
+# PREDICTION
 # -------------------------------
 def predict(image):
     image_tensor = transform(image).unsqueeze(0).to(device)
@@ -148,7 +170,7 @@ def predict(image):
     }
 
 # -------------------------------
-# MAIN UI
+# UI
 # -------------------------------
 st.title("🐃 Buffalo Breed Identification System")
 st.markdown("Upload an image to classify the breed using AI")
@@ -173,16 +195,14 @@ if uploaded_file:
         st.progress(result["confidence"])
         st.write(f"Confidence: {result['confidence']:.4f}")
 
-        # Info panel
         if result["prediction"] in breed_info:
             st.info(breed_info[result["prediction"]])
 
-        # Warning
         if result["confidence"] > 0.95:
             st.warning("⚠️ Model may be overconfident")
 
     # ---------------------------
-    # Grad-CAM Section
+    # Grad-CAM
     # ---------------------------
     if show_gradcam:
         st.markdown("---")
